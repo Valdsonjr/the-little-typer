@@ -1,0 +1,280 @@
+#lang pie
+
+;-----------------------------------------------------------------------------;
+; Data.Function
+; id, const, compose (.), flip, ($), (&), fix, on, reverse-compose
+;-----------------------------------------------------------------------------;
+
+;; id : forall A, A -> A
+(claim id (Π ((A U)) (-> A A)))
+(define id (λ (A)
+    (λ (a)
+        a)))
+
+;; const : forall A B, A -> B -> A
+(claim const (Π ((A U) (B U)) (-> A B A)))
+(define const (λ (A B)
+    (λ (a b)
+        a)))
+
+;; compose : forall A B C, (B -> C) -> (A -> B) -> A -> C
+(claim compose (Π ((A U) (B U) (C U)) (-> (-> B C) (-> A B) A C)))
+(define compose (λ (A B C)
+    (λ (f g x)
+        (f (g x)))))
+
+;; flip : forall A B C, (B -> A -> C) -> A -> B -> C
+(claim flip (Π ((A U) (B U) (C U)) (-> (-> B A C) A B C)))
+(define flip (λ (A B C)
+    (λ (f a b)
+        (f b a))))
+
+;; $ : forall A B, (A -> B) -> A -> B
+(claim $ (Π ((A U) (B U)) (-> (-> A B) A B)))
+(define $ (λ (A B)
+    (λ (f x)
+        (f x))))
+
+;; & : forall A B, A -> (A -> B) -> B
+(claim & (Π ((A U) (B U)) (-> A (-> A B) B)))
+(define & (λ (A B)
+    (λ (x f)
+        (f x))))
+
+;; fix : forall A, (A -> A) -> A
+(claim fix (Π ((A U)) (-> (-> A A) A)))
+(define fix (λ (A)
+    (λ (f)
+        TODO)))
+
+;; on : forall A B C, (B -> B -> C) -> (A -> B) -> A -> A -> C
+(claim on (Π ((A U) (B U) (C U)) (-> (-> B B C) (-> A B) A A C)))
+(define on (λ (A B C)
+    (λ (f s a1 a2)
+        (f (s a1) (s a2)))))
+
+;; reverse-compose : forall A B C, (A -> B) -> (B -> C) -> A -> C
+(claim reverse-compose (Π ((A U) (B U) (C U)) (-> (-> A B) (-> B C) A C)))
+(define reverse-compose (λ (A B C)
+    (λ (f g x)
+        (g (f x)))))
+
+;-----------------------------------------------------------------------------;
+; TESTS
+;-----------------------------------------------------------------------------;
+(check-same Nat 7 (id Nat 7))
+(check-same Atom 't (id Atom 't))
+
+(check-same Nat 7 (const Nat Atom 7 'a))
+(check-same Atom 'a (const Atom Nat 'a 10))
+
+
+;-----------------------------------------------------------------------------;
+; Data.Natural
+; +, *, gauss, factorial
+;-----------------------------------------------------------------------------;
+
+;; + : Nat -> Nat -> Nat
+(claim + (-> Nat Nat Nat))
+(define + (λ (x y)
+    (iter-Nat x
+        y
+        (λ (sum)
+            (add1 sum)))))
+
+
+;; * : Nat -> Nat -> Nat
+(claim * (-> Nat Nat Nat))
+(define * (λ (x y)
+    (iter-Nat x
+        0
+        (λ (prod)
+            (+ prod y)))))
+
+(claim gauss (-> Nat Nat))
+(define gauss (λ (n)
+    (rec-Nat n
+        0
+        (λ (x-1 sum)
+            (add1 (+ x-1 sum))))))
+
+(claim factorial (-> Nat Nat))
+(define factorial (λ (n)
+    (rec-Nat n
+        1
+        (λ (x-1 fact)
+            (* (add1 x-1) fact)))))
+
+;-----------------------------------------------------------------------------;
+; TESTS
+;-----------------------------------------------------------------------------;
+
+(check-same Nat 7 (+ 3 4))
+(check-same Nat (+ 0 1) 1)
+
+(check-same Nat 24 (* 6 4))
+(check-same Nat (* 4 6) 24)
+
+(check-same Nat (gauss 1) 1)
+(check-same Nat (gauss 2) 3)
+(check-same Nat (gauss 3) 6)
+(check-same Nat (gauss 4) 10)
+(check-same Nat (gauss 5) 15)
+
+(check-same Nat (factorial 0) 1)
+(check-same Nat (factorial 1) 1)
+(check-same Nat (factorial 2) 2)
+(check-same Nat (factorial 3) 6)
+(check-same Nat (factorial 4) 24)
+(check-same Nat (factorial 5) 120)
+(check-same Nat (factorial 6) 720)
+
+;-----------------------------------------------------------------------------;
+; Data.Pair
+; swap, dup, fst, snd
+;-----------------------------------------------------------------------------;
+
+;; swap : forall A B, Pair A B -> Pair B A
+(claim Pair.swap (Π ((A U) (B U)) (-> (Pair A B) (Pair B A))))
+(define Pair.swap (λ (A B)
+    (λ (pair)
+        (cons (cdr pair) (car pair)))))
+
+;; dup : forall A, A -> Pair A A
+(claim Pair.dup (Π ((A U)) (-> A (Pair A A))))
+(define Pair.dup (λ (A)
+    (λ (a)
+        (cons a a))))
+
+;; fst : forall A B, Pair A B -> A
+(claim Pair.fst (Π ((A U) (B U)) (-> (Pair A B) A)))
+(define Pair.fst (λ (A B)
+    (λ (pair)
+        (car pair))))
+
+;; snd : forall A B, Pair A B -> B
+(claim Pair.snd (Π ((A U) (B U)) (-> (Pair A B) B)))
+(define Pair.snd (λ (A B)
+    (λ (pair)
+        (cdr pair))))
+
+;-----------------------------------------------------------------------------;
+; TESTS
+;-----------------------------------------------------------------------------;
+
+(check-same (Pair Atom Nat) (Pair.swap Nat Atom (cons 5 'f)) (cons 'f 5))
+(check-same (Pair Atom Atom) (Pair.dup Atom 'f) (cons 'f 'f))
+(check-same Atom (Pair.fst Atom Nat (cons 't 5)) 't)
+(check-same Nat (Pair.snd Atom Nat (cons 't 5)) 5)
+
+;-----------------------------------------------------------------------------;
+; Data.List
+; cons, foldl, foldr, append, snoc, map, length, reverse
+;-----------------------------------------------------------------------------;
+
+;; List.cons : forall A, A -> List A -> List A
+(claim List.cons (Π ((A U)) (-> A (List A) (List A))))
+(define List.cons (λ (A)
+    (λ (x list)
+        (:: x list))))
+
+;; List.foldl : forall A B, (B -> A -> B) -> B -> List A -> B
+(claim List.foldl (Π ((A U) (B U)) (-> (-> B A B) B (List A) B)))
+(define List.foldl (λ (A B)
+    (λ (f def list)
+        (rec-List list
+            def
+            (λ (h t new-def)
+                (f new-def h))))))
+
+;; List.foldr : forall A B, (A -> B -> B) -> B -> List A -> B
+(claim List.foldr (Π ((A U) (B U)) (-> (-> A B B) B (List A) B)))
+(define List.foldr (λ (A B)
+    (λ (f def list)
+        (rec-List list
+            def
+            (λ (h t new-def)
+                (f h new-def))))))
+
+;; List.append : forall A, List A -> List A -> List A
+(claim List.append (Π ((A U)) (-> (List A) (List A) (List A))))
+(define List.append (λ (A)
+    (flip (List A) (List A) (List A)
+        (List.foldr A (List A) (List.cons A)))))
+
+;; List.snoc : forall A, List A -> A -> List A
+(claim List.snoc (Π ((A U)) (-> (List A) A (List A))))
+(define List.snoc (λ (A)
+    (λ (list a)
+        (List.append A list (:: a nil)))))
+
+; List.map : forall A B, (A -> B) -> List A -> List B
+(claim List.map (Π ((A U) (B U)) (-> (-> A B) (List A) (List B))))
+(define List.map (λ (A B)
+    (λ (f)
+        (List.foldl A (List B) (λ (b a) (:: (f a) b)) nil))))
+
+;; List.length : forall A, List A -> Nat
+(claim List.length (Π ((A U)) (-> (List A) Nat)))
+(define List.length (λ (A)
+    (List.foldl A Nat (λ (b a) (+ 1 b)) zero)))
+
+;; List.reverse : forall A, List A -> List A
+(claim List.reverse (Π ((A U)) (-> (List A) (List A))))
+(define List.reverse (λ (A)
+    (List.foldl A (List A) (List.snoc A) nil)))
+
+;-----------------------------------------------------------------------------;
+; TESTS
+;-----------------------------------------------------------------------------;
+
+(check-same (List Atom)
+    (List.append Atom (:: 'bread (:: 'lettuce nil)) (:: 'egg (:: 'ham (:: 'bread nil))))
+    (:: 'bread (:: 'lettuce (:: 'egg (:: 'ham (:: 'bread nil))))))
+
+(check-same (List Atom) (List.snoc Atom (:: 'Z (:: 'p nil)) 'bread)
+                        (:: 'Z (:: 'p (:: 'bread nil))))
+
+(check-same (List Nat) (List.map Nat Nat (+ 1) (:: 3 (:: 2 (:: 1 nil))))
+                       (:: 4 (:: 3 (:: 2 nil))))
+
+(check-same Nat (List.length Atom (:: 'bread (:: 'ham (:: 'bread nil))))
+                3)
+
+(check-same (List Atom) (List.reverse Atom (:: 'Z (:: 'p (:: 'bread nil))))
+                        (:: 'bread (:: 'p (:: 'Z nil))))
+
+;-----------------------------------------------------------------------------;
+; Data.Vector
+; head, tail, cons, foldl, foldr, append, snoc, map, length, reverse
+;-----------------------------------------------------------------------------;
+
+(claim Vec.head (Π ((A U) (n Nat)) (-> (Vec A (add1 n)) A)))
+(define Vec.head (λ (A n)
+    (λ (vector)
+        (head vector))))
+
+(claim Vec.tail (Π ((A U) (n Nat)) (-> (Vec A (add1 n)) (Vec A n))))
+(define Vec.tail (λ (A n)
+    (λ (vector)
+        (tail vector))))
+
+(claim Vec.cons (Π ((A U) (n Nat)) (-> A (Vec A n) (Vec A (add1 n)))))
+(define Vec.cons (λ (A n)
+    (λ (a vector)
+        (vec:: a vector))))
+
+; (claim Vec.foldl (Π ((A U) (B U) (n Nat)) (-> (-> B A B) B (Vec A n) B)))
+; (define Vec.foldl (λ (A B n)
+;     (λ (f def vector)
+;         ())))
+
+(check-same Atom (Vec.head Atom 0 (vec:: 'a vecnil)) 'a)
+(check-same Atom (Vec.head Atom 1 (vec:: 'a (vec:: 'b vecnil))) 'a)
+(check-same Atom (Vec.head Atom 2 (vec:: 'a (vec:: 'b (vec:: 'c vecnil)))) 'a)
+
+(check-same (Vec Atom 0) (Vec.tail Atom 0 (vec:: 'a vecnil)) vecnil)
+(check-same (Vec Atom 1) (Vec.tail Atom 1 (vec:: 'a (vec:: 'b vecnil))) (vec:: 'b vecnil))
+
+(check-same (Vec Atom 1) (Vec.cons Atom 0 'a vecnil) (vec:: 'a vecnil))
+(check-same (Vec Atom 2) (Vec.cons Atom 1 'a (vec:: 'b vecnil)) (vec:: 'a (vec:: 'b vecnil)))
